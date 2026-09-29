@@ -31,6 +31,7 @@
   --c2: #1d4ed8;
   --c3: #7c3aed;
   --shadow: 0 16px 44px rgba(20, 22, 30, .16), 0 2px 8px rgba(20, 22, 30, .06), 0 0 0 .5px rgba(20, 22, 30, .1);
+  --top-h: 46px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ease: cubic-bezier(.2, .8, .2, 1);
@@ -76,12 +77,14 @@ code { font: 11.5px var(--code); }
 
 /* 顶栏就是标题栏，拖动挂在这条 header 上（跟 magpie 一样）：可拖区是继承下去的自定义属性，
    所以文字、图案、空白都能拖，按钮那层自己写 no-drag 退出来。拖动和双击都交给 Wails runtime，
-   它按下后发 wails:drag，双击发 wails:drag:doubleclick，动作跟系统设置走。这里不手写鼠标事件。 */
-.top { --wails-draggable: drag; position: relative; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px 0 14px; flex: none; }
+   它按下后发 wails:drag，双击发 wails:drag:doubleclick，动作跟系统设置走。这里不手写鼠标事件。
+   --top-h 是顶栏高度，文件全屏那层从这儿往下盖。 */
+.top { --wails-draggable: drag; position: relative; display: flex; align-items: center; gap: 10px; height: var(--top-h); padding: 0 12px 0 14px; flex: none; }
 /* 红绿灯中心离顶 25.75pt 不是 25，补 2px 上边距这行才对得正。 */
-html.mac .top { height: 50px; padding-left: 96px; padding-top: 2px; }
+html.mac .top { padding-left: 96px; padding-top: 2px; }
 /* Windows 和 Linux 上面本来就有系统标题栏，再写一遍名字是重复的。 */
 html:not(.mac) .brand { display: none; }
+html.mac { --top-h: 50px; }
 .brand { display: flex; align-items: center; gap: 6px; font-weight: 600; letter-spacing: .01em; flex: none; }
 .logo { display: inline-flex; color: var(--fg); }
 .base { margin: 0; min-width: 0; flex: 1; align-self: stretch; display: flex; align-items: center; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -294,6 +297,26 @@ body.dragging { cursor: col-resize; user-select: none; }
 .edits button.edit { display: block; width: 100%; text-align: left; cursor: pointer; }
 .edits button.edit[aria-current="true"] { background: var(--sel); }
 .edits .file-open { margin: 0 14px 8px; }
+.file-open-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 14px 0; }
+.file-open-bar .text { padding: 1px 6px; font-size: 11.5px; }
+
+/* 文件全屏。盖住画布和左右两栏，顶栏留着：红绿灯还在，窗口照样能拖能关。
+   代码本来就窄，340px 的右栏读不动，放大是给人真读的。 */
+.file-full {
+  position: fixed; left: 0; right: 0; bottom: 0; top: var(--top-h); z-index: 15;
+  display: flex; flex-direction: column; background: var(--bg);
+}
+.file-full[hidden] { display: none; }
+.file-full-bar {
+  --wails-draggable: drag;
+  flex: none; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px;
+  border-bottom: 1px solid var(--line-2); background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px);
+}
+.file-full-bar code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2); }
+.file-full-bar button { --wails-draggable: no-drag; }
+.file-full-body { flex: 1; min-height: 0; overflow: auto; padding: 0 18px 24px; }
+.file-full-empty { color: var(--muted); }
 .edits button.edit:disabled { cursor: default; }
 .edits .tool { color: var(--muted); margin-right: 6px; }
 .edits code { font-size: 11.5px; word-break: break-all; }

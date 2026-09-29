@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -52,9 +53,13 @@ func TestVerdictHandsBackCopyableText(t *testing.T) {
 	srv := httptest.NewServer(handler(ui, app))
 	defer srv.Close()
 
-	send := func(payload string) model.VerdictOut {
+	send := func(payload any) model.VerdictOut {
 		t.Helper()
-		res, err := http.Post(srv.URL+"/api/verdict", "application/json", strings.NewReader(payload))
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := http.Post(srv.URL+"/api/verdict", "application/json", bytes.NewReader(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,14 +71,14 @@ func TestVerdictHandsBackCopyableText(t *testing.T) {
 		return out
 	}
 
-	back := send(`{"repo":"` + dir + `","sid":"s1","verdict":"back","opinion":"判断写反了","title":"改价格","turnId":"t2"}`)
+	back := send(map[string]string{"repo": dir, "sid": "s1", "verdict": "back", "opinion": "判断写反了", "title": "改价格", "turnId": "t2"})
 	if !back.Ok || !strings.HasPrefix(back.Text, "评审没通过：判断写反了。") {
 		t.Fatalf("%+v", back)
 	}
 	if strings.Contains(back.Text, "已发给") || strings.Contains(back.Text, "没发出去") {
 		t.Fatalf("交回的话里混进了投递结果：%s", back.Text)
 	}
-	pass := send(`{"repo":"` + dir + `","sid":"s1","verdict":"pass","title":"改价格","turnId":"t2"}`)
+	pass := send(map[string]string{"repo": dir, "sid": "s1", "verdict": "pass", "title": "改价格", "turnId": "t2"})
 	if !pass.Ok || !strings.Contains(pass.Text, "提交说明：改价格。") || !strings.Contains(pass.Text, "只提交这个会话写过的文件。") {
 		t.Fatalf("%+v", pass)
 	}

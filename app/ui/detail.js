@@ -111,8 +111,55 @@ function relatedChains(ids) {
   `;
 }
 
+// 文件正文。两个地方用：右栏那个小窗，和全屏那层。编辑器起不来就退回纯文本。
+function openFile(host, spec) {
+  host.replaceChildren();
+  if (!spec || (!spec.before && !spec.after)) {
+    host.innerHTML = '<p class="file-open-note note">这个文件对不上，复原不了。</p>';
+    return false;
+  }
+  if (!window.CodeView) {
+    host.innerHTML = `<pre class="src">${esc(spec.after || spec.before)}</pre>`;
+    return true;
+  }
+  try {
+    window.CodeView.open(host, spec);
+    return true;
+  } catch (error) {
+    host.innerHTML = `<pre class="src">${esc(spec.after || spec.before)}</pre>`;
+    console.error("文件正文画不出来", error);
+    return true;
+  }
+}
+
+// 全屏那层。Esc 和「关闭」都走这里。
+function showFile(path) {
+  const layer = document.querySelector("#file-full");
+  const body = document.querySelector("#file-full-body");
+  const where = document.querySelector("#file-full-path");
+  if (!layer || !body || !path) return;
+  const file = fileOf(path);
+  where.textContent = path;
+  openFile(body, file ? { path, before: file.before || "", after: file.after || "" } : null);
+  layer.hidden = false;
+  body.scrollTop = 0;
+}
+
+function hideFile() {
+  const layer = document.querySelector("#file-full");
+  const body = document.querySelector("#file-full-body");
+  if (!layer || layer.hidden) return;
+  layer.hidden = true;
+  if (window.CodeView) window.CodeView.close(body);
+  else if (body) body.replaceChildren();
+}
+
+function fileLayerOpen() {
+  const layer = document.querySelector("#file-full");
+  return Boolean(layer && !layer.hidden);
+}
+
 function fileOf(path) {
-  const { session, turn } = window.K;
   const current = session();
   const pools = [turn(), current && current.net, ...(current && current.turns || [])];
   for (const item of pools) {
@@ -136,17 +183,19 @@ function renderDetail() {
     root.innerHTML = "";
     const host = document.querySelector("#edits .file-open");
     const file = fileOf(where.id);
-    const text = file ? (file.after || file.before || "") : "";
     if (!host) return;
-    host.replaceChildren();
-    if (!text) {
-      host.innerHTML = `<p class="note">${ready && ready() ? "这个文件对不上，复原不了。" : "正文还在复原。"}</p>`;
-    } else if (window.CodeView) {
-      try { window.CodeView.open(host, { path: where.id, before: text, after: text }); }
-      catch (error) { host.innerHTML = `<pre class="src">${esc(text)}</pre>`; }
-    } else {
-      host.innerHTML = `<pre class="src">${esc(text)}</pre>`;
-    }
+    // 前后两份都传，编辑器才知道哪几行是加的、哪几行是删的。传同一份就等于没 diff。
+    const spec = file ? { path: where.id, before: file.before || "", after: file.after || "" } : null;
+    openFile(host, spec);
+    const bar = document.createElement("div");
+    bar.className = "file-open-bar";
+    const bigger = document.createElement("button");
+    bigger.type = "button";
+    bigger.className = "text";
+    bigger.textContent = "放大";
+    bigger.addEventListener("click", (event) => { event.stopPropagation(); showFile(where.id); });
+    bar.appendChild(bigger);
+    host.before(bar);
     host.scrollIntoView({ block: "nearest" });
     return;
   }

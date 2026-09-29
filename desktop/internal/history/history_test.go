@@ -1,12 +1,12 @@
 package history
 
 import (
-	"path/filepath"
 	"testing"
 )
 
 func TestDirectoryNamesMatchTheAgents(t *testing.T) {
-	path := filepath.Join("/Users/fitz/f-project/shop")
+	// 测的是纯字符串编码，路径用正斜杠写死，别掺平台分隔符（Windows 会给反斜杠）。
+	path := "/Users/fitz/f-project/shop"
 	if ClaudeKey(path) != "-Users-fitz-f-project-shop" {
 		t.Fatal(ClaudeKey(path))
 	}

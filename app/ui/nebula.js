@@ -550,8 +550,18 @@ document.querySelector("#handoff-copy").addEventListener("click", (event) => { e
 document.querySelector("#refresh").addEventListener("click", () => load(result.repo));
 document.querySelector("#theme").addEventListener("click", (event) => {
   event.stopPropagation();
-  if (window.KlarTheme) window.KlarTheme.set(window.KlarTheme.get() === "dark" ? "light" : "dark");
+  if (window.KlarTheme) {
+    window.KlarTheme.set(window.KlarTheme.get() === "dark" ? "light" : "dark");
+    window.dispatchEvent(new Event("klar:theme"));
+  }
 });
+document.querySelector("#file-full-close").addEventListener("click", (event) => { event.stopPropagation(); window.FileLayer.hide(); });
+// 文件全屏开着的时候，Esc 和画布那套键盘都让路。
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !window.FileLayer || !window.FileLayer.isOpen()) return;
+  event.preventDefault();
+  window.FileLayer.hide();
+}, true);
 document.querySelector("#switch-project").addEventListener("click", () => window.Guide && window.Guide.open());
 window.loadProject = (path) => { state.sessionIdx = 0; state.turnId = "net"; load(path); };
 window.addEventListener("focus", () => { if (!state.loading && result.repo) load(result.repo); });
