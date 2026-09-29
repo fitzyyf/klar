@@ -54,6 +54,9 @@ let rawH = 1;
 let fitScale = 1;
 let userScale = 1;
 let atFit = true;
+// 人手动挪过的节点。记的是相对 ELK 原位的偏移，所以换方向重排版之后还认得。
+let manual = new Map();
+let manualFor = "";
 
 function readPref(key, fallback) {
   try {
@@ -435,6 +438,7 @@ function ensureBar(host) {
     <button type="button" data-act="in" aria-label="放大">＋</button>
     <button type="button" data-act="fit">适应</button>
     <button type="button" data-act="one">1:1</button>
+    <button type="button" data-act="home" title="丢掉手动挪的位置" hidden>还原位置</button>
   `;
   pane.appendChild(barEl);
   barEl.addEventListener("click", (event) => {
@@ -453,6 +457,8 @@ function syncBar() {
   const dense = barEl.querySelector("[data-act=dense]");
   if (dir) dir.textContent = direction === "DOWN" ? "纵向" : "横向";
   if (dense) dense.textContent = density === "tight" ? "紧凑" : "宽松";
+  const home = barEl.querySelector("[data-act=home]");
+  if (home) home.hidden = manual.size === 0;
 }
 
 // 换方向、换疏密要重新排版。排完用刚才视口中心那颗星找回来。
@@ -471,6 +477,8 @@ function onBarAction(act) {
     writePref(DIR_KEY, direction);
     syncBar();
     relayout();
+  } else if (act === "home") {
+    resetPositions();
   } else if (act === "dense") {
     density = density === "tight" ? "loose" : "tight";
     writePref(DENSITY_KEY, density);
@@ -479,13 +487,51 @@ function onBarAction(act) {
   }
 }
 
+// 节点被拖过以后，连到它上面的线要自己重拉：ELK 给的折线是按原位算的。
+function reroute(from, to) {
+  const a = placed.get(from);
+  const b = placed.get(to);
+  if (!a || !b) return null;
+  const ax = a.x + a.width / 2;
+  const ay = a.y + a.height / 2;
+  const bx = b.x + b.width / 2;
+  const by = b.y + b.height / 2;
+  if (Math.abs(by - ay) >= Math.abs(bx - ax)) {
+    const down = by >= ay;
+    const p1 = { x: ax, y: down ? a.y + a.height : a.y };
+    const p2 = { x: bx, y: down ? b.y : b.y + b.height };
+    const mid = (p1.y + p2.y) / 2;
+    return [p1, { x: p1.x, y: mid }, { x: p2.x, y: mid }, p2];
+  }
+  const right = bx >= ax;
+  const p1 = { x: right ? a.x + a.width : a.x, y: ay };
+  const p2 = { x: right ? b.x : b.x + b.width, y: by };
+  const mid = (p1.x + p2.x) / 2;
+  return [p1, { x: mid, y: p1.y }, { x: mid, y: p2.y }, p2];
+}
+
+// 拖过的节点，它连的那几条线要重画；没连的别碰。
+function edgesOfNode(id, item) {
+  return (item.calls || []).filter((call) => call.from === id || call.to === id);
+}
+
 function paint(host, item, laid, highlight) {
   hostEl = host;
   const stars = new Map((item.stars || []).map((star) => [star.id, star]));
   const calls = new Map((item.calls || []).map((call) => [call.key, call]));
-  placed = new Map((laid.children || []).map((node) => [node.id, node]));
+  // 位移在这一层就加进去：画线、算包围盒、找视口中心星，用的都是画出来的位置。
+  placed = new Map();
+  for (const node of laid.children || []) {
+    const off = manual.get(node.id);
+    placed.set(node.id, off ? Object.assign({}, node, { x: node.x + off.x, y: node.y + off.y }) : node);
+  }
   rawW = Math.max(laid.width || 0, 1);
   rawH = Math.max(laid.height || 0, 1);
+  for (const node of placed.values()) {
+    // 拖出边界就把画布撑大，不然滚动区还是原来那么宽。
+    rawW = Math.max(rawW, node.x + node.width);
+    rawH = Math.max(rawH, node.y + node.height);
+  }
   const diamonds = new Set((item.stars || []).filter((star) => star.kind === "if" && !isLoop(star)).map((star) => star.id));
   const litNodes = highlight && highlight.nodes;
   const litEdges = highlight && highlight.edges;
@@ -500,11 +546,14 @@ function paint(host, item, laid, highlight) {
 
   // 药丸统一最后画：节点会盖住先画的标签。
   const pills = [];
+  const wires = new Map();
   (laid.edges || []).forEach((edge) => {
     const call = calls.get(edge.id);
     if (!call) return;
-    const points = route(edge, placed, diamonds);
-    if (points.length < 2) return;
+    // 两头有被拖过的，就自己拉一条正交折线；否则用 ELK 排好的，顺带把线收到菱形边上。
+    const moved = manual.has(call.from) || manual.has(call.to);
+    const points = moved ? reroute(call.from, call.to) : route(edge, placed, diamonds);
+    if (!points || points.length < 2) return;
     const dim = dimOn && !(litEdges && litEdges.has(call.key));
     const group = el("g", {
       class: dim ? "wire-wrap is-dim" : "wire-wrap",
@@ -514,8 +563,11 @@ function paint(host, item, laid, highlight) {
     const kind = ["wire", `chg-${call.change || "none"}`];
     if (call.uncertain && call.change !== "del") kind.push("is-unsure");
     if (focus.type === "edge" && focus.id === call.key) kind.push("is-on");
-    group.appendChild(el("path", { class: "hit", d: path }));
-    group.appendChild(el("path", { class: kind.join(" "), d: path, "marker-end": "url(#arrow)" }));
+    const hit = el("path", { class: "hit", d: path });
+    const wire = el("path", { class: kind.join(" "), d: path, "marker-end": "url(#arrow)" });
+    group.appendChild(hit);
+    group.appendChild(wire);
+    wires.set(call.key, { hit, wire });
     const label = guardText(call);
     if (label) {
       const mid = longestMid(points);
@@ -529,19 +581,22 @@ function paint(host, item, laid, highlight) {
       text.textContent = label;
       pill.appendChild(text);
       pills.push(pill);
+      wires.set(call.key, { hit, wire, pill, width });
     }
     picture.appendChild(group);
   });
 
-  (laid.children || []).forEach((node) => {
+  const nodeEls = new Map();
+  for (const node of placed.values()) {
     const star = stars.get(node.id);
-    if (!star) return;
+    if (!star) continue;
     const dim = dimOn && !(litNodes && litNodes.has(star.id));
     const group = el("g", {
       class: `${dim ? "node is-dim" : "node"}${focus.type === "node" && focus.id === star.id ? " is-on" : ""}`,
       transform: `translate(${node.x}, ${node.y})`,
       "data-node": star.id
     });
+    nodeEls.set(node.id, group);
     if (isLoop(star)) {
       group.appendChild(el("rect", {
         class: `card loop${star.mark ? ` mark-${star.mark}` : ""}`,
@@ -576,10 +631,11 @@ function paint(host, item, laid, highlight) {
       group.appendChild(name);
     }
     picture.appendChild(group);
-  });
+  }
 
   // 标签层最后落位，永远在节点之上。
   pills.forEach((pill) => picture.appendChild(pill));
+  gesture = { wires, nodeEls, item };
 
   const fit = document.createElement("div");
   fit.className = "fit";
@@ -594,6 +650,82 @@ function paint(host, item, laid, highlight) {
 }
 
 // 布局没变时只重画，不重新排版。窗口、分隔条、缩放都走这里。
+// 拖一个方框改位置。拖着的时候只动这一个 g 和连到它的那几条线，松手才记进 manual。
+let gesture = null;
+let dragNode = null;
+
+function beginNodeDrag(host, event) {
+  if (!gesture || !svg) return;
+  const group = event.target.closest("[data-node]");
+  if (!group) return;
+  const id = group.dataset.node;
+  const node = placed.get(id);
+  if (!node) return;
+  const k = scaleUnit();
+  dragNode = {
+    id,
+    x0: node.x,
+    y0: node.y,
+    // 指针落在方框里的哪，换算回布局坐标，避免松手时跳。
+    grabX: (event.clientX - svg.getBoundingClientRect().left) / k - node.x,
+    grabY: (event.clientY - svg.getBoundingClientRect().top) / k - node.y,
+    moved: false
+  };
+  dragNode.els = edgesOfNode(id, gesture.item)
+    .map((call) => ({ call, el: gesture.wires.get(call.key) }))
+    .filter((one) => one.el);
+  void host;
+}
+
+function moveNodeDrag(event) {
+  if (!dragNode || !svg) return;
+  const k = scaleUnit();
+  const r = svg.getBoundingClientRect();
+  const x = (event.clientX - r.left) / k - dragNode.grabX;
+  const y = (event.clientY - r.top) / k - dragNode.grabY;
+  if (!dragNode.moved) {
+    if (Math.hypot(x - dragNode.x0, y - dragNode.y0) < 4 / k) return;
+    dragNode.moved = true;
+    hostEl.classList.add("is-moving");
+  }
+  const node = placed.get(dragNode.id);
+  node.x = x;
+  node.y = y;
+  const group = gesture.nodeEls.get(dragNode.id);
+  if (group) group.setAttribute("transform", `translate(${x}, ${y})`);
+  for (const one of dragNode.els) {
+    const points = reroute(one.call.from, one.call.to);
+    if (!points) continue;
+    const d = rounded(points);
+    one.el.hit.setAttribute("d", d);
+    one.el.wire.setAttribute("d", d);
+    if (one.el.pill) {
+      const mid = longestMid(points);
+      one.el.pill.setAttribute("transform", `translate(${mid.x - one.el.width / 2}, ${mid.y - 10})`);
+    }
+  }
+}
+
+function endNodeDrag() {
+  if (dragNode && hostEl) hostEl.classList.remove("is-moving");
+  if (dragNode && dragNode.moved) {
+    // 拖过就算一次手势，那一下 click 不该改焦点。
+    swallow = true;
+    const node = placed.get(dragNode.id);
+    if (node) manual.set(dragNode.id, { x: node.x - dragNode.x0, y: node.y - dragNode.y0 });
+    syncBar();
+  }
+  dragNode = null;
+}
+
+// 丢掉所有手动位置，回到 ELK 排的那一版。
+function resetPositions() {
+  if (!manual.size) return false;
+  manual = new Map();
+  relayout();
+  return true;
+}
+
 function repaintSoon() {
   if (repaintTicket) return;
   repaintTicket = requestAnimationFrame(() => {
@@ -608,10 +740,20 @@ function armPan(host) {
   host.dataset.pan = "1";
   let drag = null;
   host.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("[data-node], [data-edge]")) return;
+    if (event.button !== 0) return;
+    const node = event.target.closest("[data-node]");
+    if (node) {
+      beginNodeDrag(host, event);
+      return;
+    }
+    if (event.target.closest("[data-edge]")) return;
     drag = { x: event.clientX, y: event.clientY, left: host.scrollLeft, top: host.scrollTop, moved: false };
   });
   host.addEventListener("pointermove", (event) => {
+    if (dragNode) {
+      moveNodeDrag(event);
+      return;
+    }
     if (!drag) return;
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
@@ -621,7 +763,12 @@ function armPan(host) {
   });
   host.addEventListener("pointerup", () => {
     // 拖过就不算点选。告诉外面一声，比在这儿拦一次 click 干净。
+    if (dragNode) endNodeDrag();
     if (drag && drag.moved) swallow = true;
+    drag = null;
+  });
+  host.addEventListener("pointercancel", () => {
+    if (dragNode) endNodeDrag();
     drag = null;
   });
   host.addEventListener("pointerleave", () => { drag = null; });
@@ -656,6 +803,8 @@ function focusIds() {
 
 function onKey(event) {
   if (!svg || !hostEl || !hostEl.isConnected) return;
+  // 文件全屏开着的时候，画布不让键。
+  if (window.FileLayer && window.FileLayer.isOpen()) return;
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   // 事件可能落在 window 或 document 上，它们没有 closest。
   if (event.target instanceof Element && event.target.closest("input, textarea, [contenteditable]")) return;
@@ -698,6 +847,9 @@ const Chain = {
     hostEl = null;
     svg = null;
     placed = new Map();
+    manual = new Map();
+    manualFor = "";
+    dragNode = null;
     if (barEl && barEl.isConnected) barEl.remove();
     barEl = null;
   },
@@ -721,6 +873,10 @@ const Chain = {
     const mine = ++ticket;
     const key = `${dataSig(item)}|${direction}|${density}`;
     const reused = cachedKey === key && cached;
+    if (manualFor !== item.id) {
+      manual = new Map();
+      manualFor = item.id;
+    }
     const sameItem = Boolean(lastPaint && lastPaint.item === item);
     // keep 一直是「新布局里的一个点」。
     // 同一份布局就按旧视口中心那个精确坐标还原；换了布局（方向/疏密）就认视口中心那颗星，

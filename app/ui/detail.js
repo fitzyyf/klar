@@ -115,7 +115,17 @@ function relatedChains(ids) {
 function openFile(host, spec) {
   host.replaceChildren();
   if (!spec || (!spec.before && !spec.after)) {
-    host.innerHTML = '<p class="file-open-note note">这个文件对不上，复原不了。</p>';
+    // 复原不出来的时候，磁盘上那份还在。给一条路让人用浏览器看一眼，别卡在这儿。
+    const note = document.createElement("p");
+    note.className = "file-open-note note";
+    note.textContent = "这个文件对不上，复原不了。";
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "text";
+    go.textContent = "用浏览器打开";
+    go.addEventListener("click", (event) => { event.stopPropagation(); openOnDisk(spec ? spec.path : host.dataset.path); });
+    note.appendChild(go);
+    host.appendChild(note);
     return false;
   }
   if (!window.CodeView) {
@@ -132,6 +142,23 @@ function openFile(host, spec) {
   }
 }
 
+// 交给系统用浏览器打开。路径由 Go 那边把关：只开仓库里的相对路径。
+async function openOnDisk(path) {
+  const host = document.querySelector("#file-full[hidden]") ? document.querySelector("#edits .file-open") : document.querySelector("#file-full-body");
+  if (!path) return;
+  try {
+    const reply = await ask("open_file", { repo: result.repo, path });
+    if (host) {
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = reply.note;
+      host.appendChild(note);
+    }
+  } catch (error) {
+    console.error("打开文件失败", error);
+  }
+}
+
 // 全屏那层。Esc 和「关闭」都走这里。
 function showFile(path) {
   const layer = document.querySelector("#file-full");
@@ -140,7 +167,7 @@ function showFile(path) {
   if (!layer || !body || !path) return;
   const file = fileOf(path);
   where.textContent = path;
-  openFile(body, file ? { path, before: file.before || "", after: file.after || "" } : null);
+  openFile(body, { path, before: file ? (file.before || "") : "", after: file ? (file.after || "") : "" });
   layer.hidden = false;
   body.scrollTop = 0;
 }
@@ -185,7 +212,7 @@ function renderDetail() {
     const file = fileOf(where.id);
     if (!host) return;
     // 前后两份都传，编辑器才知道哪几行是加的、哪几行是删的。传同一份就等于没 diff。
-    const spec = file ? { path: where.id, before: file.before || "", after: file.after || "" } : null;
+    const spec = { path: where.id, before: file ? (file.before || "") : "", after: file ? (file.after || "") : "" };
     openFile(host, spec);
     const bar = document.createElement("div");
     bar.className = "file-open-bar";
@@ -274,3 +301,5 @@ function renderDetail() {
 }
 
 window.renderDetail = renderDetail;
+// 文件全屏这一层由 nebula.js 接线：关闭按钮和 Esc 都调它。
+window.FileLayer = { show: showFile, hide: hideFile, isOpen: fileLayerOpen };

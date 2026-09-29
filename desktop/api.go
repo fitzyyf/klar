@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
@@ -14,7 +15,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"klar.dev/desktop/internal/engine"
+	"klar.dev/desktop/internal/history"
 	"klar.dev/desktop/internal/model"
+	"klar.dev/desktop/internal/replay"
 	"klar.dev/desktop/internal/uiembed"
 )
 
@@ -40,6 +43,7 @@ func handler(ui string, app *engine.App) http.Handler {
 	mux.HandleFunc("POST /api/load", func(w http.ResponseWriter, r *http.Request) { serveLoad(w, r, app) })
 	mux.HandleFunc("POST /api/session", func(w http.ResponseWriter, r *http.Request) { serveSession(w, r, app) })
 	mux.HandleFunc("POST /api/verdict", func(w http.ResponseWriter, r *http.Request) { serveVerdict(w, r, app) })
+	mux.HandleFunc("POST /api/open", func(w http.ResponseWriter, r *http.Request) { serveOpen(w, r) })
 	mux.HandleFunc("GET /api/watch", serveWatch)
 	page := http.FileServer(http.Dir(ui))
 	if ui == "" {
@@ -118,6 +122,51 @@ func serveVerdict(w http.ResponseWriter, r *http.Request, app *engine.App) {
 	}
 	log.Printf("记下评审请求 会话 %s 结论 %s", in.Sid, in.Verdict)
 	writeJSON(w, app.Deliver(in.Repo, in.Sid, in.Verdict, in.Opinion, in.Title, in.TurnID))
+}
+
+// serveOpen 把仓库里的一个文件交给系统，用浏览器打开。用途只有一个：引擎复原不出来的
+// 那个文件（对不上、在 errors 里），让人至少能看一眼磁盘上现在是什么样。
+// 路径必须是仓库里的相对路径。这道口子能开任意文件，所以收得紧一点：不让绝对路径、
+// 不让 `..` 出去、不开目录、不开仓库外。
+func serveOpen(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<16))
+	if err != nil {
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "请求读不懂。"})
+		return
+	}
+	var in struct {
+		Repo string `json:"repo"`
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(body, &in); err != nil {
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "请求读不懂。"})
+		return
+	}
+	repo := history.Canon(in.Repo)
+	if repo == "" || in.Path == "" || filepath.IsAbs(in.Path) {
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "只开仓库里的文件。"})
+		return
+	}
+	rel, ok := replay.Rel(repo, in.Path)
+	if !ok {
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "这个文件不在这个仓库里。"})
+		return
+	}
+	full := filepath.Join(repo, filepath.FromSlash(rel))
+	st, err := os.Stat(full)
+	if err != nil || st.IsDir() {
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "磁盘上没这个文件。"})
+		return
+	}
+	// file:// 交给系统的默认处理器（mac 上是浏览器）。不经过 shell，参数自己传。
+	url := "file://" + filepath.ToSlash(full)
+	if err := exec.Command("open", url).Run(); err != nil {
+		log.Printf("打开 %s 失败：%v", rel, err)
+		writeJSON(w, model.VerdictOut{Ok: false, Note: "打不开：" + err.Error()})
+		return
+	}
+	log.Printf("用系统打开 %s", rel)
+	writeJSON(w, model.VerdictOut{Ok: true, Note: "已经交给系统打开了。"})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

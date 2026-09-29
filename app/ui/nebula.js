@@ -3,7 +3,7 @@ const CUT = "var(--cut)";
 const AGENT_STATE = { idle: "空闲", busy: "在跑", waiting: "等权限", exited: "已退出" };
 const REVIEW = { pass: "已记通过", back: "已记退回" };
 async function ask(name, body) {
-  const path = { load_repo: "/api/load", open_session: "/api/session" }[name] || "/api/verdict";
+  const path = { load_repo: "/api/load", open_session: "/api/session", open_file: "/api/open" }[name] || "/api/verdict";
   const res = await fetch(path, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {})
   });

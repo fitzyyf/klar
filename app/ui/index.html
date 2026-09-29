@@ -28,6 +28,14 @@
     })();
   </script>
   <link rel="stylesheet" href="nebula.css">
+  <script type="module">
+    // Wails 不往页面里注入 runtime，它只是把 /wails/runtime.js 提供出来，得自己 import。
+    // 顶栏的拖动（--wails-draggable → wails:drag）和双击（wails:drag:doubleclick）都由它接，
+    // 不加载就没人接，顶栏拖不动。它是 ESM，只能 import()，用普通 script 标签会报 export 的语法错。
+    import("/wails/runtime.js").catch((error) => {
+      console.error("Wails runtime 没载进来，顶栏拖不动", error);
+    });
+  </script>
 </head>
 <body class="window">
   <header class="top">
@@ -136,5 +144,14 @@
   <script src="guide.js"></script>
   <script src="talk.js"></script>
   <script src="nebula.js"></script>
+  <script>
+    // Windows 上 Wails 只转发 mac 的标题栏双击（runtime drag.ts 里写死 IsMac()），这里自己补：
+    // 双击顶栏空白 → /api/zoom（Go 侧放大/还原）。mac 上 Wails 把双击事件拦在窗口捕获层，
+    // 到不了这里，不会重复触发。按钮（主题、刷新那些）不算空白。
+    document.querySelector(".top").addEventListener("dblclick", (event) => {
+      if (event.target.closest("button")) return;
+      fetch("/api/zoom", { method: "POST" }).catch(() => {});
+    });
+  </script>
 </body>
 </html>
