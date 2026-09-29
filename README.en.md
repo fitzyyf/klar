@@ -4,6 +4,22 @@
 
 简体中文 | English
 
+## What it looks like
+
+The chain canvas: entry to leaf, gold for this turn's changes, dashed for removed calls, `[case "grok"]` on an arrow is a branch condition. Click a star and every other chain dims.
+
+![Chain canvas](img/screen_04.png)
+
+Overview: the left pane lists finished sessions from all three agents (who changed what, which files), the middle is the net-diff chain, the right pane holds the turn's instruction and chain list.
+
+![Overview](img/screen_01.png)
+
+Left: the talk view lining up what you said with what it said; right: line-by-line function body diff.
+
+![Talk view and body diff](img/screen_03.png)
+
+![Function body diff](img/screen_02.jpeg)
+
 ## Why
 
 You run several agents (Claude, Codex, Grok) in parallel in the same repo. When it's time to wrap up, nothing today holds up:
@@ -66,3 +82,7 @@ prd/       product docs, tech notes, prototype
 ## License
 
 MIT
+
+## Acknowledgements
+
+The UI and the on-canvas annotation style take after [magpie](https://github.com/yetone/magpie); the desktop window behavior (drag layer, double-click) follows its approach too.
