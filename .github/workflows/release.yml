@@ -1,0 +1,70 @@
+# 推 v* tag 自动发布：mac 出 .app 的 zip，Windows 出单文件 exe，notes 自动生成。
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # git describe 要看到 tag，版本号才对
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+      - name: make app
+        working-directory: desktop
+        run: make app
+      - name: 打 zip（保留 app 结构）
+        working-directory: desktop
+        run: ditto -c -k --keepParent "Agent会话Review.app" klar-macos-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: klar-macos-arm64
+          path: desktop/klar-macos-arm64.zip
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+      - name: 确保 gcc（tree-sitter 走 cgo）
+        run: where.exe gcc || choco install mingw -y --no-progress
+        shell: cmd
+      - name: make windows
+        working-directory: desktop
+        run: make windows
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: klar-windows-amd64
+          path: desktop/klar.exe
+
+  release:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: 发布
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/klar-macos-arm64/klar-macos-arm64.zip \
+            dist/klar-windows-amd64/klar.exe

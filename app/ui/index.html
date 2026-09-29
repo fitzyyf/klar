@@ -5,14 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agent会话Review</title>
   <script>if (/^Mac/.test(navigator.platform)) document.documentElement.classList.add("mac");</script>
+  <script>
+    // 亮暗：第一次跟系统，之后记住人自己选的。写在样式表之前，第一屏就是对的，不闪一下再变。
+    window.KlarTheme = (() => {
+      const KEY = "klar-theme";
+      const seen = () => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const store = (value) => { try { localStorage.setItem(KEY, value); } catch (error) { /* 存不住就用这次的 */ } };
+      let current;
+      try { current = localStorage.getItem(KEY); } catch (error) { current = null; }
+      if (current !== "light" && current !== "dark") {
+        current = seen();
+        store(current);
+      }
+      document.documentElement.dataset.theme = current;
+      return {
+        get: () => document.documentElement.dataset.theme,
+        set(next) {
+          document.documentElement.dataset.theme = next;
+          store(next);
+        }
+      };
+    })();
+  </script>
   <link rel="stylesheet" href="nebula.css">
 </head>
 <body class="window">
   <header class="top">
-    <div class="drag" aria-hidden="true"></div>
     <div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 18 18" width="16" height="16"><circle cx="4.2" cy="9" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.8" cy="9" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.3 9h5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span>Agent会话Review</span></div>
     <p class="base" id="session-line"></p>
     <div class="actions">
+      <button type="button" id="theme" class="icon" title="切换亮暗" aria-label="切换亮暗">
+        <svg class="i-sun" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1"/></svg>
+        <svg class="i-moon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.9 5.9 0 1 0 7 7Z"/></svg>
+      </button>
       <button type="button" id="switch-project" class="text">切换项目</button>
       <button type="button" id="refresh" class="text">刷新</button>
     </div>

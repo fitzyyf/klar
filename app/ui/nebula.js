@@ -548,6 +548,10 @@ document.querySelector("#pass").addEventListener("click", (event) => { event.sto
 document.querySelector("#back").addEventListener("click", (event) => { event.stopPropagation(); send("back"); });
 document.querySelector("#handoff-copy").addEventListener("click", (event) => { event.stopPropagation(); copyHandoff(); });
 document.querySelector("#refresh").addEventListener("click", () => load(result.repo));
+document.querySelector("#theme").addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (window.KlarTheme) window.KlarTheme.set(window.KlarTheme.get() === "dark" ? "light" : "dark");
+});
 document.querySelector("#switch-project").addEventListener("click", () => window.Guide && window.Guide.open());
 window.loadProject = (path) => { state.sessionIdx = 0; state.turnId = "net"; load(path); };
 window.addEventListener("focus", () => { if (!state.loading && result.repo) load(result.repo); });

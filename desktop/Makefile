@@ -5,7 +5,7 @@ APP = Agent会话Review
 # 页面用 go:embed 编进二进制（internal/uiembed/ui，编译前从 ../app/ui 复制）。
 # tree-sitter 走 cgo，全平台都要 C 编译器：mac 用系统 clang，Windows 用 MinGW-w64。
 
-.PHONY: build app windows winres uiembed test clean
+.PHONY: build app windows winres check-windows uiembed test clean
 
 build: uiembed
 	go build -trimpath -ldflags="$(LDFLAGS)" -o klar .
@@ -32,8 +32,14 @@ windows: check-windows uiembed winres
 	CGO_ENABLED=1 go build -trimpath -ldflags="$(LDFLAGS) -H windowsgui" -o klar.exe .
 	@rm -f rsrc_windows_*.syso
 
+# Windows 的 make 未必有 uname/grep，用系统变量判；其余平台看 uname。
+ifeq ($(OS),Windows_NT)
+check-windows:
+	@echo Windows 环境
+else
 check-windows:
 	@uname -s | grep -qi mingw || { echo "Windows 版要在 Windows 上编（tree-sitter 走 cgo，需要 MinGW-w64 的 gcc）。"; exit 1; }
+endif
 
 winres:
 	go run github.com/tc-hib/go-winres@v0.3.3 make --in build/windows/winres.json --arch amd64 --out rsrc

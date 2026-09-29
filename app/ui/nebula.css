@@ -36,8 +36,10 @@
   --ease: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light;
 }
+/* 深色两处都得写：media 那段管「没选过、跟着系统」，data-theme 那段管「人自己选了深色」。
+   改的时候两块一起改。 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1a1a1e; --card: #232327; --card-2: #1f1f23; --pill: #2d2d33; --pill-hover: #36363d;
     --line: #333339; --line-2: #2c2c32; --fg: #ededf1; --fg-2: #b9b9c1; --muted: #8b8b94; --faint: #56565f;
     --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a; --sel: #33345a;
@@ -46,6 +48,15 @@
     --shadow: 0 16px 44px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .3), 0 0 0 .5px rgba(255, 255, 255, .1);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a1e; --card: #232327; --card-2: #1f1f23; --pill: #2d2d33; --pill-hover: #36363d;
+  --line: #333339; --line-2: #2c2c32; --fg: #ededf1; --fg-2: #b9b9c1; --muted: #8b8b94; --faint: #56565f;
+  --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a; --sel: #33345a;
+  --green: #6fd99b; --green-soft: #1e3a2b; --red: #f28b82; --red-soft: #45272a; --amber: #f2b544; --amber-soft: #3f3220;
+  --c0: #a5b4fc; --c1: #6fd99b; --c2: #93c5fd; --c3: #c4b5fd;
+  --shadow: 0 16px 44px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .3), 0 0 0 .5px rgba(255, 255, 255, .1);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -63,20 +74,24 @@ button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2p
 [hidden] { display: none !important; }
 code { font: 11.5px var(--code); }
 
-/* 顶栏充当标题栏。拖拽层盖住整条顶栏，文字和图案的点击会落到它上面。
-   Wails 只认点中的那一块：行内文字没有宽高，系统会当成不能拖。按钮留在上层，不能拖。
-   拖动和双击都交给 runtime：它按下后发 wails:drag，双击发 wails:drag:doubleclick，
-   动作跟系统设置走。不要在这里手写 mousedown/mousemove，runtime 已经拦过一遍。 */
-.top { position: relative; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px 0 14px; flex: none; }
-html.mac .top { height: 50px; padding-left: 88px; }
-.drag { position: absolute; inset: 0; z-index: 0; --wails-draggable: drag; }
-.brand, .base { position: relative; z-index: 1; pointer-events: none; }
-.top .actions, .top .actions * { --wails-draggable: no-drag; pointer-events: auto; }
+/* 顶栏就是标题栏，拖动挂在这条 header 上（跟 magpie 一样）：可拖区是继承下去的自定义属性，
+   所以文字、图案、空白都能拖，按钮那层自己写 no-drag 退出来。拖动和双击都交给 Wails runtime，
+   它按下后发 wails:drag，双击发 wails:drag:doubleclick，动作跟系统设置走。这里不手写鼠标事件。 */
+.top { --wails-draggable: drag; position: relative; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px 0 14px; flex: none; }
+/* 红绿灯中心离顶 25.75pt 不是 25，补 2px 上边距这行才对得正。 */
+html.mac .top { height: 50px; padding-left: 96px; padding-top: 2px; }
+/* Windows 和 Linux 上面本来就有系统标题栏，再写一遍名字是重复的。 */
+html:not(.mac) .brand { display: none; }
 .brand { display: flex; align-items: center; gap: 6px; font-weight: 600; letter-spacing: .01em; flex: none; }
 .logo { display: inline-flex; color: var(--fg); }
 .base { margin: 0; min-width: 0; flex: 1; align-self: stretch; display: flex; align-items: center; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .base code { color: var(--fg-2); }
-.actions { position: relative; z-index: 1; margin-left: auto; display: flex; gap: 2px; flex: none; }
+.actions { --wails-draggable: no-drag; margin-left: auto; display: flex; gap: 2px; flex: none; }
+.icon { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 24px; color: var(--muted); }
+.icon:hover { color: var(--fg); background: var(--pill); }
+/* 亮色显示日头，深色显示月亮：画的是现在长什么样，不是点了会变什么。 */
+.icon svg { display: none; }
+:root[data-theme="light"] .i-sun, :root[data-theme="dark"] .i-moon { display: block; }
 .text { font-size: 12px; color: var(--muted); padding: 3px 7px; border-radius: 6px; white-space: nowrap; transition: background .16s var(--ease), color .16s var(--ease), transform .14s var(--ease); }
 .text:hover { color: var(--fg); background: var(--pill); }
 .text:active, .primary:active, .back:active { transform: scale(.96); }

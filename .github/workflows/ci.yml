@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+      - name: make test
+        working-directory: desktop
+        run: make test
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+      - name: 确保 gcc（tree-sitter 走 cgo）
+        run: where.exe gcc || choco install mingw -y --no-progress
+        shell: cmd
+      - name: make test
+        working-directory: desktop
+        run: make test
+        shell: bash
