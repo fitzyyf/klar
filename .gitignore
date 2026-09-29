@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# 构建产物（make app / make windows）
+desktop/klar
+desktop/klar.exe
+desktop/*.app
+desktop/rsrc_windows_*.syso
+dist/
+
+# 页面内嵌副本：make uiembed 从 ../app/ui 生成，不进库
+desktop/internal/uiembed/ui/
+
+# 旧版遗留
+target/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp

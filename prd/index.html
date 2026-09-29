@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>改动星云</title>
+  <link rel="stylesheet" href="nebula.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>改动星云</h1>
+    <nav id="sessions" class="sessions" aria-label="这个仓库里的 agent 会话"></nav>
+    <p class="base" id="session-line"></p>
+  </header>
+
+  <section class="stage" aria-label="改动星云">
+    <aside class="col history" aria-label="回合">
+      <p class="col-name">回合</p>
+      <div id="history"></div>
+      <div id="edits" class="edits"></div>
+    </aside>
+
+    <div class="sky">
+      <dl class="intent">
+        <dt>你说的</dt><dd id="said"></dd>
+        <dt>它说的</dt><dd id="reply"></dd>
+        <dt>实际</dt><dd id="caption"></dd>
+      </dl>
+      <svg id="chart" viewBox="0 0 880 540" role="img" aria-label="调用全链星云"></svg>
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot add"></i>加上的调用</span>
+        <span><i class="dot cut"></i>拆掉的调用</span>
+        <span><i class="dot add"></i>± 参数改了</span>
+        <span><i class="dot edit"></i>◆ 方法改了 · ＋ 新方法</span>
+        <span><i class="dot unsure"></i>? 指向不确定</span>
+        <span>没标的星是没改的，留着是为了把全链画完</span>
+      </div>
+      <div class="chain-wrap">
+        <p class="col-name">全链</p>
+        <div id="chains"></div>
+      </div>
+    </div>
+
+    <aside class="col detail" aria-label="调用点或方法">
+      <div id="detail"></div>
+      <div class="pass">
+        <p id="pass-scope" class="scope"></p>
+        <button type="button" id="pass">记下通过</button>
+        <textarea id="back-text" rows="2" placeholder="退回意见，比如：支付没接回去，发货时的扣款在哪？"></textarea>
+        <button type="button" id="back" class="back">记下退回</button>
+        <p id="pass-note"></p>
+        <div id="handoff" hidden>
+          <p class="col-name">粘给这个会话的 agent</p>
+          <textarea id="handoff-text" rows="4" readonly></textarea>
+          <button type="button" id="handoff-copy">复制</button>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <script src="sample.js"></script>
+  <script src="nebula.js"></script>
+</body>
+</html>

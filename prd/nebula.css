@@ -1,0 +1,518 @@
+:root {
+  --ink: #12140e;
+  --panel: #191b13;
+  --line: rgba(235, 228, 210, 0.16);
+  --paper: #ebe4d2;
+  --muted: #9a937f;
+  --dim: #6e6a5c;
+  --add: #e0b15a;
+  --cut: #d27a68;
+  --edit: #efe0b0;
+  --live: #8faf86;
+  --live-2: #7fafbf;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(224, 177, 90, 0.08), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(127, 175, 191, 0.06), transparent 50%),
+    var(--ink);
+  color: var(--paper);
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", serif;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+button, svg text {
+  font-family: "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+}
+
+button { color: inherit; }
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: #16180f;
+}
+
+.bar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.base, .base-side {
+  margin: 0;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 13px;
+}
+
+.base code, .base-side code {
+  color: var(--add);
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+.base { margin-left: auto; }
+
+.sessions { display: flex; gap: 6px; }
+
+.sessions button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sessions button[aria-current="true"] {
+  border-color: var(--add);
+  background: rgba(224, 177, 90, 0.06);
+}
+
+.sessions .state { color: var(--muted); font-size: 12px; }
+.sessions .state.is-waiting { color: var(--cut); }
+
+.edits {
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-bottom: 14px;
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+}
+
+.edits .source {
+  margin: 4px 14px 8px;
+  color: var(--dim);
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edits .edit, .edits .error {
+  margin: 0;
+  padding: 4px 14px 4px 12px;
+  border-left: 2px solid var(--add);
+  line-height: 1.45;
+}
+
+.edits .tool { color: var(--muted); margin-right: 6px; }
+.edits code {
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  word-break: break-all;
+}
+.edits .skipped { border-left-color: var(--dim); color: var(--dim); }
+.edits .skipped code { text-decoration: line-through; }
+.edits .why, .edits .error { display: block; color: var(--muted); }
+.edits .error { border-left-color: var(--cut); margin-top: 6px; }
+.edits .error code { display: block; color: var(--cut); }
+.history .meta em { color: var(--cut); font-style: normal; }
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 320px;
+  background: var(--panel);
+}
+
+.history, #detail, .sky { min-height: 0; overflow: auto; }
+
+.col-name {
+  margin: 0;
+  padding: 14px 14px 0;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+}
+
+.history { border-right: 1px solid var(--line); }
+
+.history button,
+.chain-wrap button,
+.hop,
+.rel {
+  width: 100%;
+  display: block;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+
+.history button {
+  padding: 14px 14px 12px;
+}
+
+.history button[aria-current="true"] {
+  border-left-color: var(--add);
+  background: rgba(224, 177, 90, 0.06);
+}
+
+.history .when {
+  display: block;
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  color: var(--add);
+}
+
+.history .title {
+  display: block;
+  margin-top: 2px;
+  font-family: "Songti SC", "Noto Serif SC", serif;
+  font-size: 16px;
+}
+
+.history .meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+}
+
+.sky {
+  min-width: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(235, 228, 210, 0.55), transparent 55%),
+    radial-gradient(1px 1px at 28% 70%, rgba(235, 228, 210, 0.35), transparent 55%),
+    radial-gradient(1.4px 1.4px at 78% 18%, rgba(224, 177, 90, 0.7), transparent 55%),
+    radial-gradient(1px 1px at 64% 78%, rgba(127, 175, 191, 0.55), transparent 55%),
+    radial-gradient(1px 1px at 88% 46%, rgba(235, 228, 210, 0.4), transparent 55%);
+}
+
+.intent {
+  display: grid;
+  grid-template-columns: 4em 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 14px 16px 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.intent dt {
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  padding-top: 2px;
+}
+
+.intent dd { margin: 0; color: #d2cbb8; }
+#said { color: var(--paper); }
+#caption { color: var(--add); }
+
+#chart { width: 100%; height: auto; display: block; }
+
+.filament {
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.32;
+}
+
+.filament.hot {
+  opacity: 0.72;
+  stroke-width: 2.1;
+}
+
+.filament.cut { stroke-dasharray: 5 7; }
+
+.change-seg {
+  fill: none;
+  stroke-width: 3.6;
+  stroke-linecap: round;
+  opacity: 1;
+}
+
+#chart.enter .filament.hot:not(.cut),
+#chart.enter .change-seg {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 680ms ease forwards;
+}
+
+#chart.enter .edge-pin.pulse circle,
+#chart.move .edge-pin.pulse circle,
+#chart.enter .star.pulse .halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 520ms ease;
+}
+
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pop {
+  0% { transform: scale(0.55); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+}
+
+.star { cursor: pointer; }
+.star .halo { fill: rgba(235, 228, 210, 0.05); }
+.star.is-entry .core,
+.star.is-leaf .core { fill: none; stroke: var(--paper); stroke-width: 1.2; }
+.star.is-fn .core { fill: var(--paper); }
+.star.is-marked .halo { fill: rgba(224, 177, 90, 0.14); }
+.star.is-marked .core { stroke: var(--add); }
+.star text {
+  fill: var(--paper);
+  font-size: 13px;
+}
+.star .pin-node {
+  fill: var(--edit);
+  font-size: 11px;
+  font-family: "PingFang SC", sans-serif;
+}
+
+.edge-pin { cursor: pointer; }
+.edge-pin circle { stroke: rgba(18, 20, 14, 0.4); stroke-width: 1; }
+.edge-pin text {
+  fill: #1a140c;
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.edge-pin.is-add circle,
+.edge-pin.is-edit circle { fill: var(--add); }
+.edge-pin.is-del circle { fill: var(--cut); }
+.edge-pin.is-unsure circle { fill: #2a2c22; stroke: var(--muted); }
+.edge-pin.is-unsure text { fill: var(--muted); font-size: 10px; }
+
+.broken line { stroke: var(--cut); stroke-width: 1.6; }
+.broken text {
+  fill: var(--cut);
+  font-size: 12px;
+  font-family: "PingFang SC", sans-serif;
+}
+.edge-pin.is-hot circle { stroke: var(--paper); stroke-width: 1.4; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 0 16px 8px;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+}
+
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot.add { background: var(--add); }
+.dot.cut { background: var(--cut); }
+.dot.edit { background: var(--edit); }
+.dot.unsure { background: transparent; border: 1px solid var(--muted); }
+
+.chain-wrap { border-top: 1px solid var(--line); padding-bottom: 8px; }
+
+.chain-wrap button {
+  padding: 8px 14px 8px 12px;
+}
+
+.chain-wrap button[aria-current="true"] { background: rgba(235, 228, 210, 0.04); }
+
+.chain-wrap .short {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chain-wrap .tone {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  min-height: 0;
+  overflow: hidden;
+}
+
+#detail { flex: 1; padding: 14px 16px 20px; }
+
+.pass {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+
+.pass .scope { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+
+.pass button {
+  width: 100%;
+  border: 1px solid var(--add);
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pass textarea {
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 8px;
+  background: #10120c;
+  border: 1px solid var(--line);
+  color: var(--paper);
+  font: 13px/1.5 "PingFang SC", "Noto Sans SC", sans-serif;
+  resize: vertical;
+}
+
+.pass button.back {
+  margin-top: 6px;
+  border-color: rgba(210, 122, 104, 0.6);
+}
+
+.pass button:disabled,
+.pass textarea:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.pass p {
+  margin: 8px 0 0;
+  color: #d5ccb8;
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detail .eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+}
+
+.detail h2 {
+  margin: 6px 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.badge.add { color: var(--add); border-color: rgba(224, 177, 90, 0.45); }
+.badge.del { color: var(--cut); border-color: rgba(210, 122, 104, 0.5); }
+.badge.edit { color: var(--edit); border-color: rgba(239, 224, 176, 0.4); }
+.badge.none { color: var(--muted); }
+
+.detail .note { margin: 0 0 12px; color: #d5ccb8; font-size: 14px; }
+
+.detail .key {
+  margin: -4px 0 10px;
+  color: var(--dim);
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.detail h3 {
+  margin: 12px 0 6px;
+  color: var(--muted);
+  font-family: "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+.detail pre {
+  margin: 0 0 6px;
+  padding: 7px 10px;
+  background: #10120c;
+  border-left: 2px solid var(--dim);
+  color: #efe8d6;
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.detail pre.add { border-left-color: var(--add); }
+.detail pre.del {
+  border-left-color: var(--cut);
+  color: #c9a79d;
+  text-decoration: line-through;
+}
+
+.hop, .rel {
+  padding: 6px 8px;
+  margin: 0 0 4px;
+  border: 1px solid transparent;
+  border-left-width: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.hop[data-change="add"], .hop[data-change="edit"], .rel { border-left-color: var(--add); }
+.hop[data-change="del"] { border-left-color: var(--cut); }
+.hop[data-change="none"] { border-left-color: var(--dim); color: var(--muted); }
+.hop[aria-current="true"], .rel[aria-current="true"] {
+  background: rgba(235, 228, 210, 0.05);
+}
+
+@media (max-width: 980px) {
+  body { height: auto; overflow: auto; }
+  .stage { grid-template-columns: 1fr; }
+  .history, #detail, .sky { overflow: visible; }
+  .history, .detail { border: 0; border-top: 1px solid var(--line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chart.enter .filament.hot:not(.cut),
+  #chart.enter .change-seg,
+  #chart.enter .edge-pin.pulse circle,
+  #chart.move .edge-pin.pulse circle,
+  #chart.enter .star.pulse .halo { animation: none; stroke-dashoffset: 0; }
+}
