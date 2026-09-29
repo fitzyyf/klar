@@ -112,20 +112,11 @@ function relatedChains(ids) {
 }
 
 // 文件正文。两个地方用：右栏那个小窗，和全屏那层。编辑器起不来就退回纯文本。
+// 复原不出来就说清是复原不出来；磁盘上那份一直在，「用浏览器打开」不受影响。
 function openFile(host, spec) {
   host.replaceChildren();
   if (!spec || (!spec.before && !spec.after)) {
-    // 复原不出来的时候，磁盘上那份还在。给一条路让人用浏览器看一眼，别卡在这儿。
-    const note = document.createElement("p");
-    note.className = "file-open-note note";
-    note.textContent = "这个文件对不上，复原不了。";
-    const go = document.createElement("button");
-    go.type = "button";
-    go.className = "text";
-    go.textContent = "用浏览器打开";
-    go.addEventListener("click", (event) => { event.stopPropagation(); openOnDisk(spec ? spec.path : host.dataset.path); });
-    note.appendChild(go);
-    host.appendChild(note);
+    host.innerHTML = '<p class="file-open-note note">这个文件对不上，复原不了。</p>';
     return false;
   }
   if (!window.CodeView) {
@@ -168,6 +159,7 @@ function showFile(path) {
   const file = fileOf(path);
   where.textContent = path;
   openFile(body, { path, before: file ? (file.before || "") : "", after: file ? (file.after || "") : "" });
+  document.querySelector("#file-full-disk").onclick = (event) => { event.stopPropagation(); openOnDisk(path); };
   layer.hidden = false;
   body.scrollTop = 0;
 }
@@ -216,12 +208,16 @@ function renderDetail() {
     openFile(host, spec);
     const bar = document.createElement("div");
     bar.className = "file-open-bar";
-    const bigger = document.createElement("button");
-    bigger.type = "button";
-    bigger.className = "text";
-    bigger.textContent = "放大";
-    bigger.addEventListener("click", (event) => { event.stopPropagation(); showFile(where.id); });
-    bar.appendChild(bigger);
+    // 复原和打开是两件事：复原是从会话记录重建那个时间点的正文，打开是磁盘上现在这份。
+    // 所以不管复原成没成，这一条都在。
+    for (const [label, run] of [["放大", () => showFile(where.id)], ["用浏览器打开", () => openOnDisk(where.id)]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "text";
+      button.textContent = label;
+      button.addEventListener("click", (event) => { event.stopPropagation(); run(); });
+      bar.appendChild(button);
+    }
     host.before(bar);
     host.scrollIntoView({ block: "nearest" });
     return;

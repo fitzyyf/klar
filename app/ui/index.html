@@ -74,7 +74,6 @@
           <button type="button" data-workspace="talk">对话流</button>
         </div>
       </div>
-      <nav id="turn-bar" class="turn-bar" aria-label="回合"></nav>
       <div id="talk" class="talk"></div>
       <div id="chart" role="img" aria-label="调用链 UML 图"></div>
       <p id="sky-empty" class="sky-empty" hidden></p>
@@ -121,6 +120,7 @@
   <div id="file-full" class="file-full" hidden role="dialog" aria-label="文件正文">
     <div class="file-full-bar">
       <code id="file-full-path"></code>
+      <button type="button" id="file-full-disk" class="text">用浏览器打开</button>
       <button type="button" id="file-full-close" class="text">关闭</button>
     </div>
     <div id="file-full-body" class="file-full-body"></div>

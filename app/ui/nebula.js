@@ -407,32 +407,6 @@ function selectTurn(id) {
   state.focus = item ? defaultFocus(item) : { type: "none" };
 }
 
-function turnShort(text) {
-  const chars = [...String(text || "")];
-  return chars.length > 18 ? `${chars.slice(0, 17).join("")}…` : chars.join("");
-}
-
-function renderTurnBar() {
-  const bar = document.querySelector("#turn-bar");
-  if (!bar) return;
-  const s = session();
-  if (!s || !s.turns.length) {
-    bar.innerHTML = "";
-    bar.hidden = true;
-    return;
-  }
-  bar.hidden = false;
-  const pills = [`<button type="button" class="turn-pill" data-turn-id="net" aria-current="${viewingNet()}">净改</button>`];
-  s.turns.forEach((item) => {
-    pills.push(`
-      <button type="button" class="turn-pill" data-turn-id="${esc(item.id)}" title="${esc(item.prompt || "")}" aria-current="${state.turnId === item.id}">
-        <span class="t-when">${esc(item.at || "")}</span>${esc(turnShort(item.prompt))}
-      </button>
-    `);
-  });
-  bar.innerHTML = pills.join("");
-}
-
 function render() {
   window.K = {
     esc, turn, hasChart, starById, callByKey, labelOf, chainTitle, chainsOfFocus, chainTone, scopeName, viewingNet, pathOf, writtenPaths,
@@ -446,7 +420,6 @@ function render() {
   document.querySelector("#pane-sky").dataset.workspace = state.workspace;
   if (window.renderTalk) window.renderTalk();
   renderSession();
-  renderTurnBar();
   renderEdits();
   renderCaption();
   renderChart();
@@ -515,29 +488,26 @@ function applySaved() {
   }
 }
 
-// 点哪儿都把两边对上：画布滚到那儿，右栏的全链清单滚到含它的那一条。
+// 点哪儿都把两边对上：画布自适应到那儿，右栏的全链清单滚到含它的那一条。
 function followFocus() {
   const chain = window.Chain;
   if (!chain || !state.focus || state.focus.type === "none" || state.focus.type === "file") return;
   const item = turn();
   if (!item || !item.chains.length) return;
-  let ids = [];
   let index = -1;
   if (state.focus.type === "chain") {
     index = Number(String(state.focus.id).replace(/^c/, ""));
-    const hit = item.chains[index];
-    if (!hit) return;
-    ids = hit.stars;
-  } else if (state.focus.type === "node") {
-    ids = [state.focus.id];
-  } else {
-    const call = item.calls.find((one) => one.key === state.focus.id);
-    if (!call) return;
-    ids = [call.from, call.to];
+    if (!item.chains[index]) return;
   }
-  chain.reveal(ids);
+  // 缩放到哪儿、框多大，画布自己算，这里只管右栏清单滚到哪一行。
+  chain.focusCurrent();
   if (index < 0) {
-    index = item.chains.findIndex((one) => ids.every((id) => one.stars.includes(id)));
+    if (state.focus.type === "node") {
+      index = item.chains.findIndex((one) => one.stars.includes(state.focus.id));
+    } else {
+      const call = item.calls.find((one) => one.key === state.focus.id);
+      index = call ? item.chains.findIndex((one) => onChain(one, call)) : -1;
+    }
   }
   if (index < 0) return;
   const row = document.querySelector(`#chains [data-chain="${chainId(index)}"]`);
@@ -566,12 +536,6 @@ document.querySelector("#switch-project").addEventListener("click", () => window
 window.loadProject = (path) => { state.sessionIdx = 0; state.turnId = "net"; load(path); };
 window.addEventListener("focus", () => { if (!state.loading && result.repo) load(result.repo); });
 if (location.protocol.startsWith("http")) new EventSource("/api/watch").onmessage = () => { if (!state.loading && result.repo) load(result.repo); };
-document.querySelector("#turn-bar").addEventListener("click", (event) => {
-  const pill = event.target.closest("[data-turn-id]");
-  if (!pill) return;
-  selectTurn(pill.dataset.turnId);
-  render();
-});
 document.querySelector("#sessions").addEventListener("click", (event) => {
   const file = event.target.closest("[data-file]");
   const button = event.target.closest("[data-session]");

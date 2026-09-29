@@ -163,17 +163,6 @@ body.dragging { cursor: col-resize; user-select: none; }
 #pane-sky[data-workspace="talk"] #chart,
 #pane-sky[data-workspace="talk"] #sky-empty,
 #pane-sky[data-workspace="talk"] .legend,
-#pane-sky[data-workspace="talk"] .turn-bar { display: none; }
-.turn-bar { flex: none; display: flex; gap: 4px; overflow-x: auto; padding: 6px 8px 0; scrollbar-width: none; }
-.turn-bar::-webkit-scrollbar { display: none; }
-.turn-bar[hidden] { display: none; }
-.turn-pill {
-  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px;
-  border-radius: 8px; background: var(--pill); color: var(--muted); font-size: 11.5px; max-width: 220px;
-  white-space: nowrap; overflow: hidden;
-}
-.turn-pill .t-when { flex: none; font: 10.5px var(--code); opacity: .75; }
-.turn-pill[aria-current="true"] { color: var(--fg); background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .06); }
 .talk { display: none; }
 #pane-sky[data-workspace="talk"] .talk { display: flex; }
 #pane-sky[data-workspace="talk"] .chart-bar { display: none; }
@@ -301,7 +290,7 @@ body.dragging { cursor: col-resize; user-select: none; }
 .edits button.edit { display: block; width: 100%; text-align: left; cursor: pointer; }
 .edits button.edit[aria-current="true"] { background: var(--sel); }
 .edits .file-open { margin: 0 14px 8px; }
-.file-open-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 14px 0; }
+.file-open-bar { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 6px 14px 0; }
 .file-open-bar .text { padding: 1px 6px; font-size: 11.5px; }
 .file-open-note { display: flex; align-items: center; gap: 8px; }
 .file-open-note .text { flex: none; padding: 1px 6px; font-size: 11.5px; }

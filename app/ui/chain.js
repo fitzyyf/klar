@@ -328,16 +328,31 @@ function bboxOf(ids) {
 
 // 把这些星挪到画布中间；中间放不下就先缩到放得下。外部点全链、点跳都走这里。
 // 布局还没排完就先记着，排完再兑现，不然第一次打开会话时点一下就没了。
-function frame(ids) {
+// 把这些星框进画布。装不下就缩，装得下就放到位——聚焦一个节点要的是「看清它」，
+// 所以节点给一个下限和上限，别缩成缩略图，也别放到只剩一个框。
+function frame(ids, opts) {
   const box = bboxOf(ids);
   if (!box || !hostEl) return;
+  const options = opts || {};
+  const min = options.min == null ? 0 : options.min;
+  const max = options.max == null ? 8 : options.max;
   const need = Math.min((hostEl.clientWidth - 56) / Math.max(box.w, 1), (hostEl.clientHeight - 28) / Math.max(box.h, 1));
-  if (need < userScale) {
-    userScale = Math.max(need, fitScale);
-    atFit = false;
-    applyScale();
-  }
+  const want = Math.min(max, Math.max(min, need));
+  // 不比「适应」还小：适应是下限，别的都往上走。
+  userScale = Math.max(want, fitScale);
+  atFit = false;
+  applyScale();
   centerOn({ x: box.x, y: box.y });
+}
+
+// 聚焦一个节点时把它和直接连着的邻居一起框进来。光看一个框，看不出谁调它、它调谁。
+function withNeighbours(ids, item) {
+  const set = new Set(ids);
+  for (const call of (item && item.calls) || []) {
+    if (set.has(call.from)) set.add(call.to);
+    if (set.has(call.to)) set.add(call.from);
+  }
+  return [...set];
 }
 
 let pendingReveal = null;
@@ -785,20 +800,29 @@ function armPan(host) {
   }, { passive: false });
 }
 
-function focusIds() {
-  if (!lastPaint) return [];
+// 当前焦点该框哪些星，以及框到什么程度。点方框、点箭头、点一条链，三种尺度不一样。
+function focusPlan() {
+  if (!lastPaint) return null;
   const where = (lastPaint.highlight && lastPaint.highlight.focus) || {};
   const item = lastPaint.item;
-  if (where.type === "node") return [where.id];
+  if (where.type === "node") {
+    return { ids: withNeighbours([where.id], item), min: 0.9, max: 1.6 };
+  }
   if (where.type === "edge") {
     const call = (item.calls || []).find((one) => one.key === where.id);
-    return call ? [call.from, call.to] : [];
+    return call ? { ids: [call.from, call.to], min: 0.9, max: 1.6 } : null;
   }
   if (where.type === "chain") {
     const chain = (item.chains || [])[Number(String(where.id).replace(/^c/, ""))];
-    return chain ? chain.stars : [];
+    // 一条链本来就该整条装下，不设下限；实在太长就缩到装得下。
+    return chain ? { ids: chain.stars, min: 0, max: 1.6 } : null;
   }
-  return [];
+  return null;
+}
+
+function focusIds() {
+  const plan = focusPlan();
+  return plan ? plan.ids : [];
 }
 
 function onKey(event) {
@@ -821,8 +845,8 @@ function onKey(event) {
     _: () => zoomBy(1 / 1.25),
     "0": () => fitView(),
     "1": () => oneToOne(),
-    f: () => reveal(focusIds()),
-    F: () => reveal(focusIds())
+    f: () => Chain.focusCurrent(),
+    F: () => Chain.focusCurrent()
   };
   const run = keys[event.key];
   if (!run) return;
@@ -861,7 +885,13 @@ const Chain = {
     return true;
   },
   reveal,
-  focusCurrent() { reveal(focusIds()); },
+  // 聚焦当前选中的东西：画布自适应到它。
+  focusCurrent() {
+    const plan = focusPlan();
+    if (!plan) return;
+    pendingReveal = null;
+    frame(plan.ids, plan);
+  },
   render(host, item, highlight) {
     const layout = engine();
     if (!layout || !item) return false;

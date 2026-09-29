@@ -36,7 +36,7 @@ Windows: install [MinGW-w64](https://www.mingw-w64.org/), then `make windows` in
 ## Usage
 
 1. **Pick a repo, pick a session.** The left pane lists finished sessions from all three agents, with agent name, time, and touched files.
-2. **Net changes first, then drill into turns.** The canvas defaults to the whole session's net diff as chains; the turn bar switches to a single turn, and the talk view lines up what you said with what it said.
+2. **Net changes first.** The canvas shows the whole session's net diff as chains, and the talk view lines up what you said with what it said.
 3. **Click into details.** Click a star for the function body diff, a hop for changed call arguments; a broken chain names the file it broke on.
 4. **Verdict.** 记下通过 / 记下退回 writes to local `~/.klar/reviews.sqlite` and hands you the reply sentence with a copy button — you paste it back to the agent yourself. The tool never delivers, never touches agent processes, never runs git.
 
